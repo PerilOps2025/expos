@@ -1,21 +1,16 @@
-# ExPOS — Executive Personal Operating System
+# React + Vite
 
-Voice-first personal operating system for the Head of Biz Ops.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Stack
-- **Frontend**: GitHub Pages (this repo)
-- **Backend**: Google Apps Script
-- **Database**: Google Sheets
-- **AI**: Gemini 1.5 Flash
+Currently, two official plugins are available:
 
-## Setup
-1. Upload all files to this repo
-2. GitHub Pages auto-deploys from `main` branch
-3. Open `https://perilops2025.github.io/expos`
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-## Build Status
-- ✅ Phase 1 — Foundation (Sheets + GAS setup)
-- ✅ Phase 2 — Gemini AI Engine
-- ✅ Phase 3 — Record Tab
-- ✅ Phase 4 — Pending Room
-- ⏳ Phase 5–21 — In progress
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

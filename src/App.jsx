@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { signInWithGoogle, signOut } from './lib/auth'
+import Layout from './components/Layout'
+import Dashboard from './components/Dashboard'
 import CaptureInput from './components/CaptureInput'
 import PendingRoom from './components/PendingRoom'
+import DecisionFeed from './components/DecisionFeed'
+import ConfigScreen from './components/ConfigScreen'
 
 function LoginScreen() {
   return (
@@ -30,97 +34,68 @@ function LoginScreen() {
 }
 
 function MainApp({ session }) {
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [pendingItems, setPendingItems] = useState([])
-  const [confirmedCount, setConfirmedCount] = useState(0)
-  const [recentTasks, setRecentTasks] = useState([])
-
-  useEffect(() => {
-    loadRecentTasks()
-  }, [confirmedCount])
-
-  async function loadRecentTasks() {
-    const { data } = await supabase
-      .from('tasks')
-      .select('*, person:person_id(name), team:team_id(name)')
-      .is('archived_at', null)
-      .order('created_at', { ascending: false })
-      .limit(10)
-    setRecentTasks(data || [])
-  }
+  const [refreshKey, setRefreshKey] = useState(0)
 
   function handleParsed(items) {
     setPendingItems(prev => [...prev, ...items])
+    setActiveTab('capture')
   }
 
   function handleConfirmed() {
-    setConfirmedCount(c => c + 1)
+    setRefreshKey(k => k + 1)
   }
 
-  const PRIORITY_DOT = { high: 'bg-red-400', medium: 'bg-yellow-400', low: 'bg-gray-500' }
-
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-white">ExPOS</h1>
-          <div className="flex items-center gap-3">
-            {pendingItems.length > 0 && (
+    <Layout
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      pendingCount={pendingItems.length}
+    >
+      {activeTab === 'dashboard' && <Dashboard key={refreshKey} />}
+
+      {activeTab === 'capture' && (
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <h2 className="text-white font-semibold mb-4">Capture</h2>
+          <CaptureInput onParsed={handleParsed} />
+
+          {pendingItems.length > 0 && (
+            <div className="mt-4 bg-teal-900/20 border border-teal-800/40 rounded-xl px-4 py-3 flex items-center justify-between">
+              <p className="text-teal-400 text-sm">
+                {pendingItems.length} item{pendingItems.length !== 1 ? 's' : ''} waiting in Pending Room
+              </p>
               <button
                 onClick={() => setPendingItems([])}
-                className="text-xs text-gray-500 hover:text-gray-300"
+                className="text-gray-600 hover:text-gray-400 text-xs"
               >
-                {pendingItems.length} pending
+                clear
               </button>
-            )}
-            <span className="text-gray-600 text-xs">{session.user.email}</span>
-            <button onClick={signOut} className="text-gray-600 hover:text-gray-400 text-xs">
-              sign out
-            </button>
-          </div>
-        </div>
-
-        {/* Capture */}
-        <CaptureInput onParsed={handleParsed} />
-
-        {/* Recent tasks */}
-        <div className="mt-6">
-          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
-            Recent tasks
-          </h2>
-          {recentTasks.length === 0 ? (
-            <div className="text-center py-12 text-gray-700">
-              <p className="text-sm">No tasks yet</p>
-              <p className="text-xs mt-1">Use the capture box above to add your first task</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {recentTasks.map(task => (
-                <div key={task.id} className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority]}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-200 text-sm">{task.description}</p>
-                    <div className="flex gap-2 mt-0.5">
-                      {task.person?.name && <span className="text-gray-600 text-xs">{task.person.name}</span>}
-                      {task.team?.name && <span className="text-gray-600 text-xs">{task.team.name}</span>}
-                      {task.due_at && (
-                        <span className="text-gray-600 text-xs">
-                          due {new Date(task.due_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {task.meeting_context && (
-                    <span className="text-indigo-500 text-xs flex-shrink-0">mtg</span>
-                  )}
-                </div>
-              ))}
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Pending Room overlay */}
+          <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
+            <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Input format</p>
+            <div className="space-y-1 font-mono text-xs text-gray-600">
+              <p><span className="text-gray-400">task:</span> Person / Team / description / priority / due / flags</p>
+              <p><span className="text-gray-400">decision:</span> Person / Team / what was decided</p>
+              <p className="pt-2 text-gray-700">Priority: high · med · low</p>
+              <p className="text-gray-700">Due: tmr · eow · eom · mon · thu · 15jan</p>
+              <p className="text-gray-700">Flags: meeting · wait · deep · quick · followup</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'meetings' && (
+        <div className="max-w-2xl mx-auto px-4 py-6 text-center py-16">
+          <p className="text-gray-600 text-sm">Calendar integration coming in Phase 5</p>
+        </div>
+      )}
+
+      {activeTab === 'decisions' && <DecisionFeed />}
+      {activeTab === 'config' && <ConfigScreen />}
+
       {pendingItems.length > 0 && (
         <PendingRoom
           items={pendingItems}
@@ -128,7 +103,7 @@ function MainApp({ session }) {
           onConfirmed={handleConfirmed}
         />
       )}
-    </div>
+    </Layout>
   )
 }
 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
 import { signInWithGoogle, signOut } from './lib/auth'
+import CaptureInput from './components/CaptureInput'
+import PendingRoom from './components/PendingRoom'
 
 function LoginScreen() {
   return (
@@ -22,36 +24,110 @@ function LoginScreen() {
           </svg>
           Continue with Google
         </button>
-        <p className="text-center text-gray-600 text-xs mt-6">
-          Only @bizzoppo.com accounts
-        </p>
       </div>
     </div>
   )
 }
 
-function Dashboard({ session }) {
+function MainApp({ session }) {
+  const [pendingItems, setPendingItems] = useState([])
+  const [confirmedCount, setConfirmedCount] = useState(0)
+  const [recentTasks, setRecentTasks] = useState([])
+
+  useEffect(() => {
+    loadRecentTasks()
+  }, [confirmedCount])
+
+  async function loadRecentTasks() {
+    const { data } = await supabase
+      .from('tasks')
+      .select('*, person:person_id(name), team:team_id(name)')
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setRecentTasks(data || [])
+  }
+
+  function handleParsed(items) {
+    setPendingItems(prev => [...prev, ...items])
+  }
+
+  function handleConfirmed() {
+    setConfirmedCount(c => c + 1)
+  }
+
+  const PRIORITY_DOT = { high: 'bg-red-400', medium: 'bg-yellow-400', low: 'bg-gray-500' }
+
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-white">ExPOS</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-400 text-sm">{session.user.email}</span>
-            <button
-              onClick={signOut}
-              className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-            >
-              Sign out
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-bold text-white">ExPOS</h1>
+          <div className="flex items-center gap-3">
+            {pendingItems.length > 0 && (
+              <button
+                onClick={() => setPendingItems([])}
+                className="text-xs text-gray-500 hover:text-gray-300"
+              >
+                {pendingItems.length} pending
+              </button>
+            )}
+            <span className="text-gray-600 text-xs">{session.user.email}</span>
+            <button onClick={signOut} className="text-gray-600 hover:text-gray-400 text-xs">
+              sign out
             </button>
           </div>
         </div>
-        <div className="bg-gray-900 rounded-2xl p-8 text-center border border-gray-800">
-          <p className="text-green-400 font-medium text-lg mb-1">Phase 2 complete</p>
-          <p className="text-gray-400">Database connected · Google login working</p>
-          <p className="text-gray-600 text-sm mt-4">Dashboard coming in Phase 4</p>
+
+        {/* Capture */}
+        <CaptureInput onParsed={handleParsed} />
+
+        {/* Recent tasks */}
+        <div className="mt-6">
+          <h2 className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">
+            Recent tasks
+          </h2>
+          {recentTasks.length === 0 ? (
+            <div className="text-center py-12 text-gray-700">
+              <p className="text-sm">No tasks yet</p>
+              <p className="text-xs mt-1">Use the capture box above to add your first task</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentTasks.map(task => (
+                <div key={task.id} className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[task.priority]}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-200 text-sm">{task.description}</p>
+                    <div className="flex gap-2 mt-0.5">
+                      {task.person?.name && <span className="text-gray-600 text-xs">{task.person.name}</span>}
+                      {task.team?.name && <span className="text-gray-600 text-xs">{task.team.name}</span>}
+                      {task.due_at && (
+                        <span className="text-gray-600 text-xs">
+                          due {new Date(task.due_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {task.meeting_context && (
+                    <span className="text-indigo-500 text-xs flex-shrink-0">mtg</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Pending Room overlay */}
+      {pendingItems.length > 0 && (
+        <PendingRoom
+          items={pendingItems}
+          setItems={setPendingItems}
+          onConfirmed={handleConfirmed}
+        />
+      )}
     </div>
   )
 }
@@ -65,21 +141,17 @@ export default function App() {
       setSession(session)
       setLoading(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="text-gray-600 text-sm">Loading...</div>
+    </div>
+  )
 
-  return session ? <Dashboard session={session} /> : <LoginScreen />
+  return session ? <MainApp session={session} /> : <LoginScreen />
 }

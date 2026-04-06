@@ -1,6 +1,6 @@
 // ============================================================
 // ExPOS — api.js
-// GitHub Pages → GAS API Bridge
+// GitHub Pages → GAS Bridge (GET-only, no CORS preflight)
 // ============================================================
 
 const API = (() => {
@@ -8,30 +8,24 @@ const API = (() => {
   const AUTH_TOKEN = '90170e57-8858-450d-9282-a489808e1f86';
 
   async function call(action, payload = {}) {
-    const body = {
-      action,
-      payload: { ...payload, _token: AUTH_TOKEN }
-    };
+    const fullPayload = { ...payload, _token: AUTH_TOKEN };
 
-    try {
-      const resp = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        redirect: 'follow'
-      });
+    // Use GET + URL params — avoids CORS preflight entirely
+    // GAS handles GET natively with no OPTIONS request needed
+    const url = GAS_URL
+      + '?action=' + encodeURIComponent(action)
+      + '&payload=' + encodeURIComponent(JSON.stringify(fullPayload));
 
-      if (!resp.ok) throw new Error('Network error: ' + resp.status);
+    const resp = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow'
+    });
 
-      const data = await resp.json();
-      if (!data.success) throw new Error(data.error || 'Unknown GAS error');
-      return data.data;
+    if (!resp.ok) throw new Error('Network error: ' + resp.status);
 
-    } catch (err) {
-      // GAS sometimes redirects — retry with no-cors as fallback diagnostic
-      console.error('[ExPOS API]', action, err.message);
-      throw err;
-    }
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'GAS error');
+    return data.data;
   }
 
   return { call };

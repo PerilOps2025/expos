@@ -7,6 +7,7 @@ import CaptureInput from './components/CaptureInput'
 import PendingRoom from './components/PendingRoom'
 import DecisionFeed from './components/DecisionFeed'
 import ConfigScreen from './components/ConfigScreen'
+import MeetingsTab from './components/MeetingsTab'
 
 function LoginScreen() {
   return (
@@ -87,11 +88,7 @@ function MainApp({ session }) {
         </div>
       )}
 
-      {activeTab === 'meetings' && (
-        <div className="max-w-2xl mx-auto px-4 py-6 text-center py-16">
-          <p className="text-gray-600 text-sm">Calendar integration coming in Phase 5</p>
-        </div>
-      )}
+      {activeTab === 'meetings' && <MeetingsTab session={session} />}
 
       {activeTab === 'decisions' && <DecisionFeed />}
       {activeTab === 'config' && <ConfigScreen />}

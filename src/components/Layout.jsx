@@ -59,7 +59,16 @@ export default function Layout({ activeTab, setActiveTab, pendingCount, children
               </span>
             )}
           </button>
-        ))}
+         ))}
+         {/* Floating action button — mobile only */}
+            <button
+            onClick={() => setActiveTab('capture')}
+            className="md:hidden fixed bottom-20 right-4 w-14 h-14 bg-teal-600 hover:bg-teal-500 rounded-full flex items-center justify-center shadow-lg transition-colors z-40"
+            >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            </button>
       </div>
     </div>
   )

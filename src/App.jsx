@@ -8,6 +8,7 @@ import PendingRoom from './components/PendingRoom'
 import DecisionFeed from './components/DecisionFeed'
 import ConfigScreen from './components/ConfigScreen'
 import MeetingsTab from './components/MeetingsTab'
+import CaptureTab from './components/CaptureTab'
 
 function LoginScreen() {
   return (
@@ -57,36 +58,8 @@ function MainApp({ session }) {
       {activeTab === 'dashboard' && <Dashboard key={refreshKey} />}
 
       {activeTab === 'capture' && (
-        <div className="max-w-2xl mx-auto px-4 py-6">
-          <h2 className="text-white font-semibold mb-4">Capture</h2>
-          <CaptureInput onParsed={handleParsed} />
-
-          {pendingItems.length > 0 && (
-            <div className="mt-4 bg-teal-900/20 border border-teal-800/40 rounded-xl px-4 py-3 flex items-center justify-between">
-              <p className="text-teal-400 text-sm">
-                {pendingItems.length} item{pendingItems.length !== 1 ? 's' : ''} waiting in Pending Room
-              </p>
-              <button
-                onClick={() => setPendingItems([])}
-                className="text-gray-600 hover:text-gray-400 text-xs"
-              >
-                clear
-              </button>
-            </div>
-          )}
-
-          <div className="mt-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-3">Input format</p>
-            <div className="space-y-1 font-mono text-xs text-gray-600">
-              <p><span className="text-gray-400">task:</span> Person / Team / description / priority / due / flags</p>
-              <p><span className="text-gray-400">decision:</span> Person / Team / what was decided</p>
-              <p className="pt-2 text-gray-700">Priority: high · med · low</p>
-              <p className="text-gray-700">Due: tmr · eow · eom · mon · thu · 15jan</p>
-              <p className="text-gray-700">Flags: meeting · wait · deep · quick · followup</p>
-            </div>
-          </div>
-        </div>
-      )}
+  <CaptureTab onParsed={handleParsed} pendingCount={pendingItems.length} />
+)}
 
       {activeTab === 'meetings' && <MeetingsTab session={session} />}
 

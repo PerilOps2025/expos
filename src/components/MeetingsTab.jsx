@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { saveGoogleToken, getGoogleToken } from '../lib/auth'
 import { fetchCalendarEvents, buildMeetingBrief } from '../lib/calendar'
 import { format, isToday, isTomorrow, isThisWeek, parseISO, differenceInMinutes } from 'date-fns'
+import { requestPushPermission, schedulePreMeetingNotifications } from '../lib/pushNotifications'
 
 const PRIORITY_DOT = {
   high: 'bg-red-400',
@@ -165,16 +166,28 @@ function MeetingCard({ meeting, isExpanded, onToggle }) {
                   Now
                 </span>
               )}
-              <p className="text-gray-200 text-sm font-medium truncate">{meeting.title}</p>
-            </div>
-            <p className="text-gray-600 text-xs">
-              {format(start, 'h:mm a')} – {format(end, 'h:mm a')} · {duration}min
-              {meeting.attendees?.length > 1 && ` · ${meeting.attendees.filter(a => !a.self).length} others`}
-            </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-gray-600 text-xs">
+                    {format(start, 'h:mm a')} – {format(end, 'h:mm a')} · {duration}min
+                    {meeting.attendees?.length > 1 && ` · ${meeting.attendees.filter(a => !a.self).length} others`}
+                    </p>
+                    {meeting.meeting_link && (
+                   <a 
+                    href={meeting.meeting_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-xs bg-teal-900/50 text-teal-400 border border-teal-800 px-2 py-0.5 rounded-full hover:bg-teal-900 transition-colors"
+                    >
+                    Join →
+                    </a>
+                )}
+                </div>
           </div>
           <span className="text-gray-700 text-xs mt-1 flex-shrink-0">
             {isExpanded ? '▲' : '▼'}
           </span>
+        </div>
         </div>
       </button>
 
@@ -211,13 +224,15 @@ export default function MeetingsTab({ session }) {
   }
 
   async function handleConnect() {
-    setSyncing(true)
-    await saveGoogleToken(session)
-    await fetchCalendarEvents(7)
-    setConnected(true)
-    await loadMeetings()
-    setSyncing(false)
-  }
+  setSyncing(true)
+  await saveGoogleToken(session)
+  await fetchCalendarEvents(7)
+  setConnected(true)
+  const mtgs = await loadMeetings()
+  await requestPushPermission()
+  if (mtgs) await schedulePreMeetingNotifications(mtgs)
+  setSyncing(false)
+}
 
   async function handleSync() {
     setSyncing(true)
@@ -227,14 +242,15 @@ export default function MeetingsTab({ session }) {
   }
 
   async function loadMeetings() {
-    const { data } = await supabase
-      .from('meetings')
-      .select('*')
-      .gte('start_at', new Date().toISOString())
-      .order('start_at', { ascending: true })
-      .limit(30)
-    setMeetings(data || [])
-  }
+  const { data } = await supabase
+    .from('meetings')
+    .select('*')
+    .gte('start_at', new Date().toISOString())
+    .order('start_at', { ascending: true })
+    .limit(30)
+  setMeetings(data || [])
+  return data || []
+}
 
   // Group meetings by day
   function groupByDay(meetings) {
@@ -287,13 +303,24 @@ export default function MeetingsTab({ session }) {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-white font-semibold">Meetings</h2>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="text-gray-500 hover:text-gray-300 text-xs transition-colors disabled:opacity-50"
-        >
-          {syncing ? 'Syncing...' : '↻ Sync'}
-        </button>
+        <div className="flex items-center gap-3">
+            <button
+                onClick={async () => {
+                const ok = await requestPushPermission()
+                alert(ok ? 'Notifications enabled!' : 'Notifications blocked — check browser settings')
+                }}
+                className="text-gray-600 hover:text-gray-400 text-xs transition-colors"
+            >
+                🔔 Notify
+            </button>
+            <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="text-gray-500 hover:text-gray-300 text-xs transition-colors disabled:opacity-50"
+            >
+                {syncing ? 'Syncing...' : '↻ Sync'}
+            </button>
+            </div>
       </div>
 
       {days.length === 0 ? (

@@ -53,17 +53,20 @@ serve(async (req) => {
       )
     }
 
+    const body = await req.json().catch(() => ({}))
+    const isWeekly = body?.weekly === true
     const d = digestData || {}
     const today = new Date().toLocaleDateString('en-IN', {
-      weekday: 'long', day: 'numeric', month: 'long'
+    weekday: 'long', day: 'numeric', month: 'long'
     })
+    const subjectPrefix = isWeekly ? 'ExPOS Weekly Brief' : 'ExPOS Daily Digest'
 
     const html = buildDigestHTML(d, today)
 
     // Send via Gmail API
     const emailContent = [
       `To: ${toEmail}`,
-      `Subject: ExPOS Daily Digest — ${today}`,
+      `Subject: ${subjectPrefix} — ${today}`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
       ``,

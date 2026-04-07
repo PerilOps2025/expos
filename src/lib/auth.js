@@ -33,6 +33,9 @@ export async function saveGoogleToken(session) {
     user_id: session.user.id,
     google_access_token: session.provider_token,
     google_refresh_token: session.provider_refresh_token,
+    token_expires_at: session.expires_at
+      ? new Date(session.expires_at * 1000).toISOString()
+      : new Date(Date.now() + 3600 * 1000).toISOString(),
     calendar_connected: true,
     updated_at: new Date().toISOString(),
   })
@@ -44,4 +47,31 @@ export async function getGoogleToken() {
     .select('*')
     .single()
   return data
+}
+
+export async function getValidGoogleToken() {
+  const tokenData = await getGoogleToken()
+  if (!tokenData) return null
+
+  // Check if token expires within 5 minutes
+  const expiresAt = tokenData.token_expires_at
+    ? new Date(tokenData.token_expires_at)
+    : null
+
+  const needsRefresh = expiresAt
+    ? expiresAt.getTime() - Date.now() < 5 * 60 * 1000
+    : false
+
+  if (!needsRefresh) return tokenData.google_access_token
+
+  // Try to refresh via Supabase session refresh
+  const { data: { session }, error } = await supabase.auth.refreshSession()
+  if (error || !session?.provider_token) {
+    console.warn('Token refresh failed — user may need to re-login')
+    return tokenData.google_access_token // Return old token as fallback
+  }
+
+  // Save refreshed token
+  await saveGoogleToken(session)
+  return session.provider_token
 }

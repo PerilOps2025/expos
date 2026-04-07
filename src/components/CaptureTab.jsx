@@ -5,7 +5,7 @@ import {
   saveDraft, loadDraft, clearDraft,
   queueCapture, loadQueue, removeFromQueue,
   isOnline
-} from '../lib/offlineQueue'
+} from '../lib/offlinequeue'
 import VoiceRecorder from './VoiceRecorder'
 import CaptureInput from './CaptureInput'
 

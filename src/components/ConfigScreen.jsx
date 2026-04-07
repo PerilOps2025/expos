@@ -10,6 +10,30 @@ export default function ConfigScreen() {
 
   useEffect(() => { loadAll() }, [])
 
+  async function sendTestDigest() {
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-digest`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      }
+    )
+    const result = await res.json()
+    if (result.success) {
+      alert(`Digest sent to ${result.sentTo}`)
+    } else {
+      alert('Info: ' + (result.error || result.message))
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message)
+  }
+}
+
   async function loadAll() {
     const [{ data: entityData }, { data: configData }] = await Promise.all([
       supabase.from('entities').select('*').order('type').order('name'),
@@ -80,14 +104,20 @@ export default function ConfigScreen() {
               />
             </div>
             <div>
-              <label className="text-gray-400 text-xs block mb-1">Daily digest email</label>
-              <input
+            <label className="text-gray-400 text-xs block mb-1">Daily digest email</label>
+            <input
                 type="email"
                 className="bg-gray-800 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none w-full"
                 placeholder="you@bizzoppo.com"
                 value={config.digest_email || ''}
                 onChange={e => saveConfig('digest_email', e.target.value)}
-              />
+            />
+            <button
+                onClick={sendTestDigest}
+                className="mt-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors"
+            >
+                Send test digest now
+            </button>
             </div>
           </div>
           <button
